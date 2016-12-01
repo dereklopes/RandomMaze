@@ -1,4 +1,9 @@
 
+/**
+ * @author Derek Lopes
+ * Source credit to "Data Structures and Algorithms in Java" by Robert Lafore
+ * 2 Ed. Chapter 13
+ */
 class Room {
 	char label; // name of room
 	boolean wasVisited; // whether this room was visited or not
