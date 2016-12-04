@@ -5,11 +5,10 @@
  * 2 Ed. Chapter 13
  */
 class Maze {
-	public final int mazeSize, // size of the maze (MAX_SIZE x MAX_SIZE)
+	private final int mazeSize, // size of the maze (MAX_SIZE x MAX_SIZE)
 					  maxRooms; // maximum number of rooms in maze
 	private Room roomList[]; // array of rooms
-	public int adjMat[][]; // adjacency matrix
-	private int nRooms; // current number of rooms
+	private int adjMat[][]; // adjacency matrix
 	
 	/**
 	 * Creates a maze with full walls (no doors).
@@ -19,20 +18,11 @@ class Maze {
 		mazeSize = size;
 		maxRooms = mazeSize * mazeSize;
 		adjMat = new int[maxRooms][maxRooms];
-		nRooms = 0;
 		for(int i = 0; i < mazeSize; i++) {
 			for(int j = 0; j < mazeSize; j++) {
 				adjMat[i][j] = 0;
 			}
 		}
-	}
-	
-	/**
-	 * Adds a new room to the maze.
-	 * @param label name of room to add
-	 */
-	public void addRoom(char label) {
-		roomList[nRooms++] = new Room(label);
 	}
 	
 	/**
