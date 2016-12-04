@@ -27,7 +27,7 @@ class Room {
 		return wasVisited;
 	}
 
-	void setWasVisited(boolean wasVisited) {
-		this.wasVisited = wasVisited;
+	void visit() {
+		wasVisited = true;
 	}
 }
