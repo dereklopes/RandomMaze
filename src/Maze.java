@@ -5,10 +5,10 @@
  * 2 Ed. Chapter 13
  */
 class Maze {
-	private final int MAZE_SIZE, // size of the maze (MAX_SIZE x MAX_SIZE)
-					  MAX_ROOMS; // maximum number of rooms in maze
+	public final int mazeSize, // size of the maze (MAX_SIZE x MAX_SIZE)
+					  maxRooms; // maximum number of rooms in maze
 	private Room roomList[]; // array of rooms
-	private int adjMat[][]; // adjacency matrix
+	public int adjMat[][]; // adjacency matrix
 	private int nRooms; // current number of rooms
 	
 	/**
@@ -16,12 +16,12 @@ class Maze {
 	 * @param size the size of the maze (size x size).
 	 */
 	public Maze(int size) {
-		MAZE_SIZE = size;
-		MAX_ROOMS = MAZE_SIZE * MAZE_SIZE;
-		adjMat = new int[MAX_ROOMS][MAX_ROOMS];
+		mazeSize = size;
+		maxRooms = mazeSize * mazeSize;
+		adjMat = new int[maxRooms][maxRooms];
 		nRooms = 0;
-		for(int i = 0; i < MAZE_SIZE; i++) {
-			for(int j = 0; j < MAZE_SIZE; j++) {
+		for(int i = 0; i < mazeSize; i++) {
+			for(int j = 0; j < mazeSize; j++) {
 				adjMat[i][j] = 0;
 			}
 		}
@@ -68,8 +68,53 @@ class Maze {
 		if(start + 1 == end || start - 1 == end)
 			return true;
 		// + or - MAZE_SIZE
-		if(start + MAZE_SIZE == end || start - MAZE_SIZE == end)
+		if(start + mazeSize == end || start - mazeSize == end)
 			return true;
 		return false;
+	}
+	
+	@Override
+	public String toString() {
+		String maze = new String();
+		// top border
+		maze += "+ ";
+		for(int i = 1; i < mazeSize; i++) {
+			maze += "+-";
+		}
+		maze += "+\n";
+		
+		// insides
+		for(int i = 0; i < mazeSize; i++) {
+			// test horizontal connections
+			maze += "| ";
+			int start = i * mazeSize;
+			int finish = start + mazeSize;
+			for(int j = start; j < finish - 1; j++) {
+				if(adjMat[j][j+1] == 1)
+					maze += "  ";
+				else
+					maze += "| ";
+			}
+			maze += "|\n";
+			// test vertical connections
+			if(i != mazeSize - 1) {
+				maze += "+";
+				for(int j = start; j < finish; j++) {
+					if(adjMat[j][j + mazeSize] == 1)
+						maze += " +";
+					else
+						maze += "-+";
+				}
+				maze += "\n";
+			}
+		}
+		
+		// bottom border
+		for(int i = 0; i < mazeSize - 1; i++) {
+			maze += "+-";
+		}
+		maze += "+ +";
+		
+		return maze;
 	}
 }
