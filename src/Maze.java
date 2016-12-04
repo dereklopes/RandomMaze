@@ -83,23 +83,23 @@ class Maze {
 	public String toString() {
 		String maze = new String();
 		// top border
-		maze += "+ ";
+		maze += "+  ";
 		for(int i = 1; i < mazeSize; i++) {
-			maze += "+-";
+			maze += "+--";
 		}
 		maze += "+\n";
 		
 		// insides
 		for(int i = 0; i < mazeSize; i++) {
 			// test horizontal connections
-			maze += "| ";
+			maze += "|  ";
 			int start = i * mazeSize;
 			int finish = start + mazeSize;
 			for(int j = start; j < finish - 1; j++) {
 				if(adjMat[j][j+1] == 1)
-					maze += "  ";
+					maze += "   ";
 				else
-					maze += "| ";
+					maze += "|  ";
 			}
 			maze += "|\n";
 			// test vertical connections
@@ -107,9 +107,9 @@ class Maze {
 				maze += "+";
 				for(int j = start; j < finish; j++) {
 					if(adjMat[j][j + mazeSize] == 1)
-						maze += " +";
+						maze += "  +";
 					else
-						maze += "-+";
+						maze += "--+";
 				}
 				maze += "\n";
 			}
@@ -117,9 +117,9 @@ class Maze {
 		
 		// bottom border
 		for(int i = 0; i < mazeSize - 1; i++) {
-			maze += "+-";
+			maze += "+--";
 		}
-		maze += "+ +";
+		maze += "+  +";
 		
 		return maze;
 	}
