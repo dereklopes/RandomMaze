@@ -1,214 +1,442 @@
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Random;
 import java.util.Stack;
 
 /**
- * @author Derek Lopes
- * Source credit to "Data Structures and Algorithms in Java" by Robert Lafore
- * 2 Ed. Chapter 13
+ * @author Derek Lopes & Hedi Moalla Source credit to "Data Structures and
+ *         Algorithms in Java" by Robert Lafore 2 Ed. Chapter 13
+ *
  */
-class Maze {
-	private final int mazeSize, // size of the maze (MAX_SIZE x MAX_SIZE)
-					  maxRooms; // maximum number of rooms in maze
-	private Room roomList[]; // array of rooms
-	private int adjMat[][]; // adjacency matrix
-	private Random rand; // random number generator for randomizing maze
+public class Maze {
+	private final int mazeSize;
+	private final int maxRooms;
+	static final int UNVISITED = 1;
+	static final int VISITED = 2;
+	static final int EXPLORED = 3;
+
+	static final int PATH = 1;
+	static final int DFS_PATH = 2;
+	static final int BFS_PATH = 3;
+
+	int[][] adjMat;
+	Node[] adjList;
+
+	Stack<Vertex> cellStack;
+	Vertex[][] graph;
+	Vertex currentCell;
 	
-	/**
-	 * Creates a maze with full walls (no doors).
-	 * @param size the size of the maze (size x size).
-	 */
+	int visitedCells;
+
 	public Maze(int size) {
-		mazeSize = size;
+		this.mazeSize = size;
 		maxRooms = mazeSize * mazeSize;
-		roomList = new Room[maxRooms];
-		for(int i = 0; i < roomList.length; i++) {
-			roomList[i] = new Room((char) i);
-		}
-		adjMat = new int[maxRooms][maxRooms];
-		for(int i = 0; i < mazeSize; i++) {
-			for(int j = 0; j < mazeSize; j++) {
+		adjMat = new int[mazeSize][mazeSize];
+		for (int i = 0; i < mazeSize; i++) {
+			for (int j = 0; j < mazeSize; j++) {
 				adjMat[i][j] = 0;
 			}
+		} // fill adjMat with 0s
+		adjList = new Node[maxRooms];
+		for (int i = 0; i < maxRooms; i++) {
+			adjList[i] = null;
 		}
-		rand = new Random();
+		cellStack = new Stack<Vertex>();
+		graph = new Vertex[mazeSize][mazeSize];
 	}
-	
+
 	/**
-	 * If the rooms are not adjacent, no door is added.
-	 * Otherwise, adds a connecting door between two rooms.
-	 * @param start start room
-	 * @param end end room
-	 * @return if the door was added or not
+	 * @param path
 	 */
-	public boolean addDoor(int start, int end) {
-		if(start >= 0 && start < maxRooms && end >= 0 && end < maxRooms) {
-			if(checkAdjacent(start, end)) {
-				adjMat[start][end] = 1;
-				adjMat[end][start] = 1;
-				return true;
-			} else {
-				return false;
-			}
-		} else {
-			return false;
-		}
-	}
-	
-	/**
-	 * Prints the label for a specific room number.
-	 * @param r the room number to print
-	 */
-	public void displayRoom(int r) {
-		System.out.println(roomList[r].label);
-	}
-	
-	/**
-	 * @param start first room
-	 * @param end second room
-	 * @return if the two rooms are horizontally or vertically adjacent to each other
-	 */
-	public boolean checkAdjacent(int start, int end) {
-		// + or - 1
-		if((start + 1 == end) && (((start + 1) % mazeSize) != 0))
-			return true;
-		if((start - 1 == end) && ((start % mazeSize) != 0))
-			return true;
-		// + or - MAZE_SIZE
-		if(start + mazeSize == end || start - mazeSize == end)
-			return true;
-		return false;
-	}
-	
-	@Override
-	public String toString() {
-		String maze = new String();
-		// top border
-		maze += "+  ";
-		for(int i = 1; i < mazeSize; i++) {
-			maze += "+--";
-		}
-		maze += "+\n";
-		
-		// insides
-		for(int i = 0; i < mazeSize; i++) {
-			// test horizontal connections
-			maze += "|  ";
-			int start = i * mazeSize;
-			int finish = start + mazeSize;
-			for(int j = start; j < finish - 1; j++) {
-				if(adjMat[j][j+1] == 1)
-					maze += "   ";
-				else
-					maze += "|  ";
-			}
-			maze += "|\n";
-			// test vertical connections
-			if(i != mazeSize - 1) {
-				maze += "+";
-				for(int j = start; j < finish; j++) {
-					if(adjMat[j][j + mazeSize] == 1)
-						maze += "  +";
+	public void showMaze(int path) {
+		System.out.println("");
+		for (int i = 0; i < mazeSize; i++) {
+			for (int j = 0; j < mazeSize; j++) {
+				if (graph[j][i].hasUpWall) {
+					if (graph[j][i] == graph[0][0])
+						System.out.print("+   ");
 					else
-						maze += "--+";
+						System.out.print("+---");
+				} else {
+					System.out.print("+   ");
 				}
-				maze += "\n";
 			}
-		}
-		
-		// bottom border
-		for(int i = 0; i < mazeSize - 1; i++) {
-			maze += "+--";
-		}
-		maze += "+  +";
-		
-		return maze;
-	}
-	
-	/**
-	 * @return random double from 0 to 1 inclusive
-	 */
-	private double getRandomNum() {
-		return rand.nextDouble();
-	}
-	
-	/**
-	 * Randomly generate the maze.
-	 */
-	public void randomize() {
-		Stack<Integer> stack = new Stack<Integer>();
-		int currentCell, visitedCells;
-		currentCell = visitedCells = 0;
-		while(visitedCells < maxRooms - 1) {
-			roomList[currentCell].visit();
-			//find all neighbors that haven't been visited
-			boolean top, bottom, left, right;
-			top = bottom = left = right = false;
-			// check bottom neighbor
-			if(currentCell + mazeSize < maxRooms && !roomList[currentCell + mazeSize].wasVisited) {
-				bottom = true;
-			}
-			// check top neighbor
-			if(currentCell - mazeSize >= 0 && !roomList[currentCell - mazeSize].wasVisited) {
-				top = true;
-			}
-			// check right neighbor
-			if(currentCell + 1 < maxRooms && ((currentCell + 1) % mazeSize) != 0
-					&& !roomList[currentCell + 1].wasVisited) {
-				right = true;
-			}
-			// check left neighbor
-			if(currentCell - 1 >= 0 && currentCell % mazeSize != 0 
-					&& !roomList[currentCell - 1].wasVisited) {
-				left = true;
-			}
-			// if an unvisited neighbor exists, randomly pick one
-			if(top || bottom || left || right) {
-				boolean notAdded = true;
-				while(notAdded) {
-					int rand = (int) (getRandomNum() * 4);
-					switch(rand) {
-					case 0:
-						if(top) {
-							if(!(notAdded = !addDoor(currentCell, currentCell - mazeSize))) {
-								stack.push(currentCell);
-								currentCell = currentCell - mazeSize;
-								visitedCells++;
-							}
-						}
-						break;
-					case 1:
-						if(bottom) {
-							if(!(notAdded = !addDoor(currentCell, currentCell + mazeSize))) {
-								stack.push(currentCell);
-								currentCell = currentCell + mazeSize;
-								visitedCells++;
-							}
-						}
-						break;
-					case 2:
-						if(left) {
-							if(!(notAdded = !addDoor(currentCell, currentCell - 1))) {
-								stack.push(currentCell);
-								currentCell = currentCell - 1;
-								visitedCells++;
-							}
-						}
-						break;
-					case 3:
-						if(right) {
-							if(!(notAdded = !addDoor(currentCell, currentCell + 1))) {
-								stack.push(currentCell);
-								currentCell = currentCell + 1;
-								visitedCells++;
-							}
-						}
-						break;
+			System.out.println("+");
+			for (int j = 0; j < mazeSize; j++) {
+				// show path with #s
+				if (path == PATH) {
+					if (graph[j][i].hasLeftWall) {
+						if (graph[j][i].isOnPath)
+							System.out.print("| " + "#" + " ");
+						else
+							System.out.print("|   ");
+					} else {
+						if (graph[j][i].isOnPath)
+							System.out.print("  " + "#" + " ");
+						else
+							System.out.print("    ");
 					}
 				}
+
+				else if (path == BFS_PATH) {
+					if (graph[j][i].hasLeftWall) {
+						if (graph[j][i].visitBFS <= graph[mazeSize - 1][mazeSize - 1].visitBFS) {
+							System.out.print("| " + String.format("%2s", graph[j][i].visitBFS));
+						} else
+							System.out.print("|   ");
+					} else {
+						if (graph[j][i].visitBFS <= graph[mazeSize - 1][mazeSize - 1].visitBFS) {
+							System.out.print("  " + String.format("%2s", graph[j][i].visitBFS));
+						} else
+							System.out.print("    ");
+					}
+				} else {
+					if (graph[j][i].hasLeftWall) {
+						if (graph[j][i].dtime <= graph[mazeSize - 1][mazeSize - 1].dtime) {
+							System.out.print("| " + String.format("%2s", graph[j][i].visitedOrder));
+						} else
+							System.out.print("|   ");
+					} else {
+						if (graph[j][i].dtime <= graph[mazeSize - 1][mazeSize - 1].dtime) {
+							System.out.print("  " + String.format("%2s", graph[j][i].visitedOrder));
+						} else
+							System.out.print("    ");
+					}
+				}
+
+			}
+			System.out.println("|");
+		}
+		for (int j = 0; j < mazeSize; j++) {
+			if (j == mazeSize - 1)
+				System.out.print("+   ");
+			else
+				System.out.print("+---");
+
+		}
+		System.out.println("+");
+
+	}
+
+	/**
+	 * 
+	 */
+	public void mazeGenerator() {
+		currentCell = graph[0][0];
+		currentCell.isVisited = true;
+		visitedCells = 1;
+
+		while (visitedCells < maxRooms) {
+			if (validNeighbors(currentCell) != 0) {
+				Vertex vtx = null;
+
+				Random generator = new Random();
+				int random = generator.nextInt(validNeighbors(currentCell));
+				vtx = currentCell.neighbors.get(random);
+
+				removeWall(currentCell, vtx);
+
+				Node newNode = new Node(vtx);
+				Node currentNode = adjList[currentCell.label - 1];
+				if (currentNode == null) {
+					currentNode = newNode;
+					adjList[currentCell.label - 1] = currentNode;
+				} else {
+					while (currentNode.next != null) {
+						currentNode = currentNode.next;
+					}
+					currentNode.next = newNode;
+				}
+
+				Node newNode2 = new Node(currentCell);
+				currentNode = adjList[vtx.label - 1];
+				if (currentNode == null) {
+					currentNode = newNode2;
+					adjList[vtx.label - 1] = newNode2;
+				} else {
+					while (currentNode.next != null) {
+						currentNode = currentNode.next;
+					}
+					currentNode.next = newNode2;
+				}
+				cellStack.push(currentCell);
+				currentCell = vtx;
+				currentCell.isVisited = true;
+				visitedCells++;
 			} else {
-				currentCell = stack.pop();
+				if (!cellStack.isEmpty()) {
+
+					Vertex v = cellStack.pop();
+					currentCell = v;
+				}
+			}
+
+		}
+	}
+
+	int visitBfsOrd;
+
+	/**
+	 * 
+	 */
+	public void bfs() {
+		Vertex vrtx = this.graph[0][0];
+		vrtx.status = VISITED;
+		vrtx.distance = 0;
+		vrtx.parent = null;
+
+		Queue<Vertex> queue = new LinkedList<Vertex>();
+		queue.add(vrtx);
+
+		while (!queue.isEmpty()) {
+			Vertex u = queue.remove();
+			Node v = adjList[u.label - 1];
+			while (v != null) {
+				if (v.v.status == UNVISITED) {
+					v.v.status = VISITED;
+					visitBfsOrd = visitBfsOrd + 1;
+					v.v.visitBFS = visitBfsOrd;
+					v.v.distance = u.distance + 1;
+					v.v.parent = u;
+					queue.add(v.v);
+							}
+				v = v.next;
 			}
 		}
 	}
-	
+
+	int time;
+	int visitOrd;
+
+	/**
+	 * 
+	 */
+	public void dfs() {
+		time = 0;
+		Vertex currentNode;
+		System.out.println("");
+		for (int i = 0; i < maxRooms; i++) {
+
+			currentNode = graph[i / mazeSize][i % mazeSize];
+			if (currentNode.status == UNVISITED)
+				dfsVisit(currentNode);
+		}
+		System.out.println("");
+	}
+
+	/**
+	 * @param u
+	 */
+	public void dfsVisit(Vertex u) {
+		time++;
+		u.visitedOrder = visitOrd;
+		visitOrd = visitOrd + 1;
+		u.dtime = time;
+		u.status = VISITED;
+		Node n = adjList[u.label - 1];
+		while (n != null) {
+			if (n.v.status == UNVISITED) {
+				n.v.parent = u;
+				dfsVisit(n.v);
+			}
+			n = n.next;
+		}
+		u.status = EXPLORED;
+		time++;
+		u.ftime = time;
+	}
+
+	/**
+	 * @param startVertex
+	 * @param endVertex
+	 */
+	public void printPath(Vertex startVertex, Vertex endVertex) {
+
+		if (startVertex.label == endVertex.label)
+			;
+		else if (endVertex.parent == null)
+			System.out.print("No paths exist");
+		else
+			printPath(startVertex, endVertex.parent);
+		endVertex.isOnPath = true;
+
+	}
+
+	/**
+	 * @param graph
+	 */
+	public void printAdjList(Node[] graph) {
+		Node currentNode = null;
+		for (int i = 0; i < maxRooms; i++) {
+			System.out.print("\nRow : [" + (i + 1) + "]");
+			currentNode = graph[i];
+			while (currentNode != null) {
+				System.out.print("->" + currentNode.v.label);
+				currentNode = currentNode.next;
+			}
+		}
+	}
+
+	/**
+	 * @param v
+	 * @return
+	 */
+	public int validNeighbors(Vertex v) {
+		Iterator<Vertex> it = v.neighbors.iterator();
+		while (it.hasNext()) {
+			Vertex vertex = it.next();
+			if (vertex.isVisited) {
+				it.remove();
+			}
+		}
+		int neighbors = 0;
+		
+		for (int x = 0; x < v.neighbors.size(); x++) {
+			if (!v.neighbors.get(x).isVisited) {
+				neighbors++;
+			}
+		}
+		return neighbors;
+	}
+
+	/**
+	 * This method removes the walls between two given cells.
+	 * 
+	 * @param current
+	 *            vertex
+	 * @param next
+	 *            vertex
+	 */
+
+	public void removeWall(Vertex current, Vertex next) {
+
+		if (current.label + mazeSize == next.label) {
+			
+			current.hasDownWall = false;
+			next.hasUpWall = false;
+		} else if (current.label + 1 == next.label) {
+			
+			current.hasRightWall = false;
+			next.hasLeftWall = false;
+		} else if (current.label - 1 == next.label) {
+			
+			current.hasLeftWall = false;
+			next.hasRightWall = false;
+		} else if (current.label - mazeSize == next.label) {
+			
+			current.hasUpWall = false;
+			next.hasDownWall = false;
+		}
+
+		current.neighbors.remove(next);
+		next.neighbors.remove(current);
+	}
+
+	/**
+	 * assign attributes to vertices
+	 */
+	public void fill() {
+		int vertexNumber = 1;
+
+		
+		for (int i = 0; i < mazeSize; i++) {
+			for (int j = 0; j < mazeSize; j++) {
+				Vertex v = new Vertex(j, i);
+				graph[j][i] = v;
+			}
+		}
+
+		
+		for (int i = 0; i < mazeSize; i++) {
+			for (int j = 0; j < mazeSize; j++) {
+				graph[j][i].label = vertexNumber;
+				graph[j][i].parent = null;
+				vertexNumber++;
+			}
+		}
+
+		
+		for (int i = 0; i < mazeSize; i++) {
+			for (int j = 0; j < mazeSize; j++) {
+				assignNeighbors(graph[j][i]);
+			}
+		}
+		mazeGenerator();
+	}
+
+	/**
+	 * This method assigns neighbors to a specified cell. Uses simple
+	 * constraints such as determining the (x,y) coordinates of the
+	 * aforementioned cell
+	 * 
+	 * @param currentCell
+	 */
+	public void assignNeighbors(Vertex v) {
+		
+		if (v.y != 0) {
+			v.neighbors.add(graph[v.x][v.y - 1]);
+		}
+
+		
+		if (v.y != (mazeSize - 1)) {
+			v.neighbors.add(graph[v.x][v.y + 1]);
+		}
+
+		
+		if (v.x != 0) {
+			v.neighbors.add(graph[v.x - 1][v.y]);
+		}
+
+		
+		if (v.x != mazeSize - 1) {
+			v.neighbors.add(graph[v.x + 1][v.y]);
+		}
+	}
+
+	class Node {
+		Node next = null;
+		Vertex v;
+
+		public Node() {
+		}
+
+		public Node(Vertex x) {
+			v = x;
+		}
+	}
+
+	class Vertex {
+		int visitBFS;
+		int distance;
+		int label;
+		int x;
+		int y;
+		int visitNum = 0;
+		int status = UNVISITED;
+
+		boolean isVisited = false;
+		boolean isOnPath = false;
+
+		int dtime;
+		int ftime;
+		Vertex parent;
+
+		int visitedOrder = 0;
+
+		boolean hasUpWall = true;
+		boolean hasDownWall = true;
+		boolean hasRightWall = true;
+		boolean hasLeftWall = true;
+		boolean hasAllWalls = true;
+
+		ArrayList<Vertex> neighbors = new ArrayList<Vertex>();
+
+		public Vertex(int x, int y) {
+			this.x = x;
+			this.y = y;
+		}
+	}
+
 }
